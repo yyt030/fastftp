@@ -2,27 +2,40 @@ package main
 
 import (
 	"net"
-	"io/ioutil"
 	"fastftp/common"
+	"os"
+	"math"
+	"fmt"
 )
 
 func main() {
-	const filename = "foo.in"
-	const count = 20000000
+	const filename = "testdata/foo.in"
+	const count = 1
 
 	// create file
-	common.WriteToFile(filename, common.RandomSource(count))
+	common.WriteChunk(filename, common.RandomSource(count), 0)
 
-	// Read file
-	content, err := ioutil.ReadFile("foo.in")
+	createPipeline(filename, 100000)
+
+}
+
+func createPipeline(filename string, chunkSize int64) {
+	fileInfo, err := os.Stat(filename)
 	if err != nil {
 		panic(err)
 	}
+
 	conn, err := net.Dial("tcp", ":8888")
 	if err != nil {
 		panic(err)
 	}
 	defer conn.Close()
 
-	common.WriteSocket(conn, content)
+	chunkCount := int(math.Ceil(float64(fileInfo.Size()) / float64(chunkSize)))
+	fmt.Println(">>>", chunkCount)
+	for i := 0; i < chunkCount; i++ {
+		chunk := common.ReadChunk(filename, chunkSize, int64(i)*chunkSize)
+		fmt.Println(">>>", chunk)
+		common.WriteSocket(conn, chunk)
+	}
 }

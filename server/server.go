@@ -35,10 +35,9 @@ func handleRequest(conn net.Conn) {
 	defer conn.Close()
 	fmt.Printf("welcome connection from %s\n", conn.RemoteAddr().String())
 	msg := common.ReadSocket(conn)
-	//fmt.Println("receive msg:", string(msg))
 
-	// save content to file
-	common.WriteToFile("foo.in.out", msg)
+	// Save chunk to file
+	common.WriteChunk("testdata/foo.in.out", msg, 0)
 
-	//common.WriteSocket(conn, msg)
+	// length(8byte)+shashm()+(body)
 }
