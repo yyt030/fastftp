@@ -37,7 +37,5 @@ func handleRequest(conn net.Conn) {
 	msg := common.ReadSocket(conn)
 
 	// Save chunk to file
-	common.WriteChunk("testdata/foo.in.out", msg, 0)
-
-	// length(8byte)+shashm()+(body)
+	common.WriteToFile("testdata/foo.in.out", msg, 0)
 }

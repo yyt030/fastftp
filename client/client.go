@@ -6,21 +6,30 @@ import (
 	"os"
 	"math"
 	"fmt"
+	"bufio"
 )
 
 func main() {
 	const filename = "testdata/foo.in"
-	const count = 1
+	const count = 20
+	const chunkCount = 1
 
 	// create file
-	common.WriteChunk(filename, common.RandomSource(count), 0)
+	common.WriteToFile(filename, common.RandomSource(count), 0)
 
-	createPipeline(filename, 100000)
+	// Put Source
+	createPipeline(filename, chunkCount)
 
 }
 
-func createPipeline(filename string, chunkSize int64) {
-	fileInfo, err := os.Stat(filename)
+func createPipeline(filename string, chunkCount int) {
+	f, err := os.Open(filename)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	fi, err := f.Stat()
 	if err != nil {
 		panic(err)
 	}
@@ -31,11 +40,15 @@ func createPipeline(filename string, chunkSize int64) {
 	}
 	defer conn.Close()
 
-	chunkCount := int(math.Ceil(float64(fileInfo.Size()) / float64(chunkSize)))
-	fmt.Println(">>>", chunkCount)
+	chunkSize := int(math.Ceil(float64(fi.Size()) / float64(chunkCount)))
 	for i := 0; i < chunkCount; i++ {
-		chunk := common.ReadChunk(filename, chunkSize, int64(i)*chunkSize)
-		fmt.Println(">>>", chunk)
-		common.WriteSocket(conn, chunk)
+		f.Seek(int64(i*chunkSize), 0)
+		chunk := common.ReadSource(
+			bufio.NewReader(f), chunkSize)
+		fmt.Printf(">>>[%02d] %x\n", i, chunk[:len(chunk)/8])
+
+		w := bufio.NewWriter(conn)
+		common.WriteSocket(w, chunk)
+		w.Flush()
 	}
 }
