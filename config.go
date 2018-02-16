@@ -4,7 +4,7 @@ const MsgLength = 8
 
 type ReqMsg struct {
 	Length int64   // 报文长度
-	Flag   [1]byte // 报文类型
+	MsgFlag   [1]byte // 报文类型
 	FileInfo       // 文件信息
 	ChunkInfo      // 块信息
 }

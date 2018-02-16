@@ -11,7 +11,7 @@ import (
 
 func main() {
 	const filename = "testdata/foo.in"
-	const count = 20
+	const count = 200
 	const chunkCount = 1
 
 	// create file
@@ -45,10 +45,10 @@ func createPipeline(filename string, chunkCount int) {
 		f.Seek(int64(i*chunkSize), 0)
 		chunk := common.ReadSource(
 			bufio.NewReader(f), chunkSize)
-		fmt.Printf(">>>[%02d] %x\n", i, chunk[:len(chunk)/8])
+		fmt.Printf(">>>[%02d] %x\n", i, chunk)
 
 		w := bufio.NewWriter(conn)
-		common.WriteSocket(w, chunk)
+		common.WriteSocket(fi, conn, chunk, chunkSeq)
 		w.Flush()
 	}
 }

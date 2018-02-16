@@ -36,6 +36,8 @@ func handleRequest(conn net.Conn) {
 	fmt.Printf("welcome connection from %s\n", conn.RemoteAddr().String())
 	msg := common.ReadSocket(conn)
 
+	fmt.Println("receive message length: >>>", len(msg))
+
 	// Save chunk to file
 	common.WriteToFile("testdata/foo.in.out", msg, 0)
 }
