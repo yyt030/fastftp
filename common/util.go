@@ -76,11 +76,30 @@ func ReadSource(r io.Reader, chuckSize int) []byte {
 }
 
 func WriteSocket(w io.Writer, chunk []byte) {
-	chunkSize := uint64(len(chunk))
-	header := make([]byte, 8)
-	binary.BigEndian.PutUint64(header, chunkSize)
+	//req := config.NewReqMsg()
+	//req.Length =
+	//copy(req.Filename[:], []byte("foo.in.out"))
+	//req.FileSize = uint64(len(chunk))
+	//req.FileHash = [16]byte{}k]]]]][
+	//req.fileType = [1]byte{}
+	//req.Chunk = &chunk
+	//req.ChunkSize = uint64(len(chunk))
+
+	length := make([]byte, 8) // 报文长度
+	flag := make([]byte, 1)   // 报文类型
+	//filename := make([]byte, 64)    // 发送文件名字， 含路径
+	//fileSize := make([]byte, 8)     // 文件大小
+	//fileHash := make([]byte, 16)    // 文件大小hash
+	//fileType := make([]byte, 1)     // 文件类型：正常，压缩
+	chunkSize := uint64(len(chunk)) // 块大小
+	//chunkSeq := make([]byte, 4)     // 块在文件中的序号
+
+	binary.BigEndian.PutUint64(length, chunkSize+1+64+8+16+1+4)
+
 	// Write header
-	w.Write(header)
+	w.Write(length)
+	// Chunk sequeue
+	w.Write(flag)
 	// Write body message
 	w.Write(chunk)
 }
