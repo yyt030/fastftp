@@ -11,8 +11,8 @@ import (
 
 func main() {
 	const filename = "testdata/foo.in"
-	const count = 200
-	const chunkCount = 1
+	const count = 20000
+	const chunkCount = 15
 
 	// create file
 	common.WriteToFile(filename, common.RandomSource(count), 0)
@@ -34,21 +34,22 @@ func createPipeline(filename string, chunkCount int) {
 		panic(err)
 	}
 
-	conn, err := net.Dial("tcp", ":8888")
-	if err != nil {
-		panic(err)
-	}
-	defer conn.Close()
-
 	chunkSize := int(math.Ceil(float64(fi.Size()) / float64(chunkCount)))
 	for i := 0; i < chunkCount; i++ {
-		f.Seek(int64(i*chunkSize), 0)
+		conn, err := net.Dial("tcp", ":8888")
+		if err != nil {
+			panic(err)
+		}
+		defer conn.Close()
+
+		offset := i * chunkSize
+		f.Seek(int64(offset), 0)
 		chunk := common.ReadSource(
 			bufio.NewReader(f), chunkSize)
-		fmt.Printf(">>>[%02d] %x\n", i, chunk)
+		fmt.Printf(">>>[%02d] %x\n", i, chunk[:30])
 
 		w := bufio.NewWriter(conn)
-		common.WriteSocket(fi, conn, chunk, chunkSeq)
+		common.WriteSocket(fi, conn, chunk, uint64(offset))
 		w.Flush()
 	}
 }

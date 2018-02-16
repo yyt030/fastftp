@@ -33,11 +33,11 @@ func createServer(addr string) {
 // Handle request connection
 func handleRequest(conn net.Conn) {
 	defer conn.Close()
-	fmt.Printf("welcome connection from %s\n", conn.RemoteAddr().String())
-	msg := common.ReadSocket(conn)
+	fmt.Printf("========================\nwelcome connection from %s\n", conn.RemoteAddr().String())
+	msg, offset := common.ReadSocket(conn)
 
 	fmt.Println("receive message length: >>>", len(msg))
 
 	// Save chunk to file
-	common.WriteToFile("testdata/foo.in.out", msg, 0)
+	common.WriteToFile("testdata/foo.in.out", msg, offset)
 }

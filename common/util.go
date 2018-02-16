@@ -39,7 +39,7 @@ func RandomSource(count int) []byte {
 }
 
 // Write chunk to a file
-func WriteToFile(filename string, chunk []byte, offset int64) {
+func WriteToFile(filename string, chunk []byte, offset uint64) {
 	f, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
 		panic(err)
@@ -49,7 +49,7 @@ func WriteToFile(filename string, chunk []byte, offset int64) {
 	w := bufio.NewWriter(f)
 	defer w.Flush()
 
-	f.Seek(offset, 0)
+	f.Seek(int64(offset), 0)
 
 	_, err = f.Write(chunk)
 	if err != nil {
@@ -76,18 +76,19 @@ func ReadSource(r io.Reader, chuckSize int) []byte {
 	return chunk
 }
 
-func WriteSocket(fi os.FileInfo, conn net.Conn, chunk []byte, ) {
-	var length uint64            // 报文长度
-	msgFlag := [1]byte{0x00}     // 报文类型
-	fileName := [64]byte{}       //[64]byte 发送文件名字，含路径
-	fileSize := int64(fi.Size()) // int64   文件大小
-	fileHash := [16]byte{}       // 文件大小hash
-	fileType := [1]byte{0x00}    // 文件类型：正常，压缩
-	chunkSize := len(c)          // int64   // 块大小
-	chunkSeq := [1]byte{0x00}    // 块在文件中的序号
+func WriteSocket(fi os.FileInfo, conn net.Conn, chunk []byte, offset uint64) {
+	var length uint64              // 报文长度
+	msgFlag := [1]byte{0x00}       // 报文类型
+	fileName := [64]byte{}         //[64]byte 发送文件名字，含路径
+	fileSize := int64(fi.Size())   // int64   文件大小
+	fileHash := [16]byte{}         // 文件大小hash
+	fileType := [1]byte{0x00}      // 文件类型：正常，压缩
+	chunkSize := len(chunk)        // int64   // 块大小
+	chunkSeq := make([]byte, 2)    // 块在文件中的序号
+	chunkOffset := make([]byte, 8) // 块所在文件的偏移量
 
-	length = 1 + 64 + 8 + 16 + 1 + 8 + 1 + uint64(len(c))
-	fmt.Println("WriteFileToSocket header length:", length, fi.Name())
+	length = 1 + 64 + 8 + 16 + 1 + 8 + 1 + uint64(len(chunk))
+	fmt.Printf("WriteFileToSocket header length:[%d], name:[%s], chunkSeq:[%d]\n", length, fi.Name(), offset)
 
 	// Set header buffer
 	msg := []byte{}
@@ -104,9 +105,11 @@ func WriteSocket(fi os.FileInfo, conn net.Conn, chunk []byte, ) {
 	chunkSizeBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(chunkSizeBytes, uint64(chunkSize))
 	msg = append(msg, chunkSizeBytes...)
-	//chunkSeqBytes := make([]byte, 1)
-	//binary.BigEndian.PutUint64(chunkSeqBytes, uint64(chunkSeq))
+	//chunkSeqBytes := make([]byte, 2)
+	//binary.BigEndian.PutUint64(chunkSeq, offset)
 	msg = append(msg, chunkSeq[:]...)
+	binary.BigEndian.PutUint64(chunkOffset, offset)
+	msg = append(msg, chunkOffset[:]...)
 	msg = append(msg, chunk...)
 
 	w := bufio.NewWriter(conn)
@@ -114,8 +117,8 @@ func WriteSocket(fi os.FileInfo, conn net.Conn, chunk []byte, ) {
 	w.Flush()
 }
 
-func ReadSocket(r io.Reader) []byte {
-	header := ReadSource(r, 107)
+func ReadSocket(r io.Reader) ([]byte, uint64) {
+	header := ReadSource(r, 116)
 	// message header
 	length := header[:8]
 	msgType := header[8:9]
@@ -124,10 +127,10 @@ func ReadSocket(r io.Reader) []byte {
 	fileHash := header[81:81+16]
 	fileType := header[97:98]
 	chunkSize := header[98:98+8]
-	chunkSeq := header[106:107]
+	chunkSeq := header[106:108]
+	chunkOffset := header[108:116]
 
 	// print message header
-	fmt.Println("-----------------------")
 	fmt.Printf("length:%x %d\n", length, binary.BigEndian.Uint64(length))
 	fmt.Println("msgType:", msgType)
 	fmt.Println("filename:", fileName)
@@ -140,5 +143,6 @@ func ReadSocket(r io.Reader) []byte {
 
 	// read message body
 	msgBody := ReadSource(r, int(binary.BigEndian.Uint64(chunkSize)))
-	return msgBody
+	fmt.Printf("message body:%x\n", msgBody[:30])
+	return msgBody, binary.BigEndian.Uint64(chunkOffset)
 }
