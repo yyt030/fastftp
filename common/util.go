@@ -88,7 +88,7 @@ func WriteSocket(fi os.FileInfo, conn net.Conn, chunk []byte, offset uint64) {
 	chunkOffset := make([]byte, 8) // 块所在文件的偏移量
 
 	length = 1 + 64 + 8 + 16 + 1 + 8 + 1 + uint64(len(chunk))
-	fmt.Printf("WriteFileToSocket header length:[%d], name:[%s], chunkSeq:[%d]\n", length, fi.Name(), offset)
+	fmt.Printf("WriteFileToSocket header length:[%d], name:[%s], chunkSeq:[%d], chunk:%x\n", length, fi.Name(), offset, chunk[:len(chunk)/8])
 
 	// Set header buffer
 	msg := []byte{}
@@ -105,8 +105,6 @@ func WriteSocket(fi os.FileInfo, conn net.Conn, chunk []byte, offset uint64) {
 	chunkSizeBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(chunkSizeBytes, uint64(chunkSize))
 	msg = append(msg, chunkSizeBytes...)
-	//chunkSeqBytes := make([]byte, 2)
-	//binary.BigEndian.PutUint64(chunkSeq, offset)
 	msg = append(msg, chunkSeq[:]...)
 	binary.BigEndian.PutUint64(chunkOffset, offset)
 	msg = append(msg, chunkOffset[:]...)
@@ -120,13 +118,23 @@ func WriteSocket(fi os.FileInfo, conn net.Conn, chunk []byte, offset uint64) {
 func ReadSocket(r io.Reader) ([]byte, uint64) {
 	header := ReadSource(r, 116)
 	// message header
+	chunkSize := header[98:106]
+	chunkOffset := header[108:116]
+
+	// read message body
+	msgBody := ReadSource(r, int(binary.BigEndian.Uint64(chunkSize)))
+	fmt.Printf("message body:%x\n", msgBody[:len(msgBody)/8])
+	return msgBody, binary.BigEndian.Uint64(chunkOffset)
+}
+
+func PrintMsgHeader(header []byte) {
 	length := header[:8]
 	msgType := header[8:9]
-	fileName := header[9:9+64]
-	fileSize := header[73:73+8]
-	fileHash := header[81:81+16]
+	fileName := header[9:73]
+	fileSize := header[73:81]
+	fileHash := header[81:97]
 	fileType := header[97:98]
-	chunkSize := header[98:98+8]
+	chunkSize := header[98:106]
 	chunkSeq := header[106:108]
 	chunkOffset := header[108:116]
 
@@ -139,10 +147,5 @@ func ReadSocket(r io.Reader) ([]byte, uint64) {
 	fmt.Println("fileType:", fileType)
 	fmt.Printf("chunkSize:%x\n", chunkSize, )
 	fmt.Println("chunkSeq:", chunkSeq)
-	//fmt.Printf("chunk:%x\n", ReadSource(r, int(binary.BigEndian.Uint64(chunkSize))))
-
-	// read message body
-	msgBody := ReadSource(r, int(binary.BigEndian.Uint64(chunkSize)))
-	fmt.Printf("message body:%x\n", msgBody[:30])
-	return msgBody, binary.BigEndian.Uint64(chunkOffset)
+	fmt.Println("chunkOffset:", chunkOffset)
 }

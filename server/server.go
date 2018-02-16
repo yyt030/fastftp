@@ -8,6 +8,7 @@ import (
 
 func main() {
 	addr := ":8888"
+	fmt.Println("Listening on:", addr)
 	createServer(addr)
 }
 
@@ -25,6 +26,7 @@ func createServer(addr string) {
 			panic(err)
 		}
 
+		common.CreateNullFile("testdata/foo.in.out", 16000)
 		// Handle conntions in a new goroutine
 		go handleRequest(conn)
 	}
